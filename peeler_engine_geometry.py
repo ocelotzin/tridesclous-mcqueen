@@ -10,7 +10,8 @@ import joblib
 from concurrent.futures import ThreadPoolExecutor
 import itertools
 
-
+# Optimización: Control de logging para reducir overhead en template matching
+DEBUG_MODE = False  # Cambiar a True para debugging detallado
 
 from .peeler_engine_base import PeelerEngineGeneric
 
@@ -91,10 +92,11 @@ class PeelerEngineGeometrical(PeelerEngineGeneric):
 
     def re_detect_local_peak(self):
         mask = self.peakdetector.get_mask_peaks_in_chunk(self.fifo_residuals)
-        # DEBUG: Monitor peak detection
-        residuals_range = [float(np.min(self.fifo_residuals)), float(np.max(self.fifo_residuals))]
-        peaks_found = int(np.sum(mask)) if mask is not None else 0
-        print(f"[🔬 PeakDetector] Residuals range: {residuals_range}, mask shape: {mask.shape if mask is not None else None}, peaks found: {peaks_found}")
+        # DEBUG: Monitor peak detection (optimizado con DEBUG_MODE)
+        if DEBUG_MODE:
+            residuals_range = [float(np.min(self.fifo_residuals)), float(np.max(self.fifo_residuals))]
+            peaks_found = int(np.sum(mask)) if mask is not None else 0
+            print(f"[🔬 PeakDetector] Residuals range: {residuals_range}, mask shape: {mask.shape if mask is not None else None}, peaks found: {peaks_found}")
         
         if mask.ndim ==1:
             #~ mask &= ~self.mask_already_tested[self.n_span:-self.n_span, 0]
@@ -285,24 +287,26 @@ class PeelerEngineGeometrical(PeelerEngineGeneric):
         #~ t2 = time.perf_counter()
         #~ print('numba_sparse_scalar_product', (t2-t1)*1000)
 
-        # DEBUG: Log template matching values
-        if not hasattr(self, '_template_debug_counter'):
-            self._template_debug_counter = 0
-        self._template_debug_counter += 1
-        
-        if self._template_debug_counter % 50 == 0:  # Log every 50 attempts
-            print(f"[🔬 TemplateMatch] Attempt #{self._template_debug_counter}")
-            print(f"[🔬 TemplateMatch] CENTERED Scalar products range: [{scalar_products.min():.3f}, {scalar_products.max():.3f}]")
-            print(f"[🔬 TemplateMatch] Scalar products mean (should be ~0): {np.mean(scalar_products):.6f}")
-            print(f"[🔬 TemplateMatch] Strict bounds range: [{strict_low.min():.3f}, {strict_high.max():.3f}]")
-            print(f"[🔬 TemplateMatch] Channel {chan_ind}, waveform amplitude: [{full_waveform.min():.3f}, {full_waveform.max():.3f}]")
+        # DEBUG: Log template matching values (optimizado con DEBUG_MODE)
+        if DEBUG_MODE:
+            if not hasattr(self, '_template_debug_counter'):
+                self._template_debug_counter = 0
+            self._template_debug_counter += 1
+            
+            if self._template_debug_counter % 50 == 0:  # Log every 50 attempts
+                print(f"[🔬 TemplateMatch] Attempt #{self._template_debug_counter}")
+                print(f"[🔬 TemplateMatch] CENTERED Scalar products range: [{scalar_products.min():.3f}, {scalar_products.max():.3f}]")
+                print(f"[🔬 TemplateMatch] Scalar products mean (should be ~0): {np.mean(scalar_products):.6f}")
+                print(f"[🔬 TemplateMatch] Strict bounds range: [{strict_low.min():.3f}, {strict_high.max():.3f}]")
+                print(f"[🔬 TemplateMatch] Channel {chan_ind}, waveform amplitude: [{full_waveform.min():.3f}, {full_waveform.max():.3f}]")
         
         possible_idx, = np.nonzero((scalar_products < strict_high) & (scalar_products > strict_low))
         #~ possible_idx, = np.nonzero((scalar_products < flexible_high) & (scalar_products > flexible_low))
         
-        # DEBUG: Log template matching results
-        if self._template_debug_counter % 50 == 0:  # Log every 50 attempts
-            print(f"[🔬 TemplateMatch] Possible candidates: {len(possible_idx)} (strict bounds)")
+        # DEBUG: Log template matching results (optimizado con DEBUG_MODE)
+        if DEBUG_MODE:
+            if hasattr(self, '_template_debug_counter') and self._template_debug_counter % 50 == 0:
+                print(f"[🔬 TemplateMatch] Possible candidates: {len(possible_idx)} (strict bounds)")
         
         #~ print('possible_idx', possible_idx)
         #~ print('scalar_products[possible_idx]', scalar_products[possible_idx])
@@ -325,10 +329,11 @@ class PeelerEngineGeometrical(PeelerEngineGeneric):
                 #~ candidates_idx = extra_idx
             candidates_idx = extra_idx
             
-            # DEBUG: Log when no strict candidates but checking flexible
-            if self._template_debug_counter % 50 == 0:  # Log every 50 attempts
-                print(f"[🔬 TemplateMatch] No strict candidates, checking flexible: {len(extra_idx)} candidates")
-                print(f"[🔬 TemplateMatch] Flexible bounds range: [{flexible_low.min():.3f}, {flexible_high.max():.3f}]")
+            # DEBUG: Log when no strict candidates but checking flexible (optimizado)
+            if DEBUG_MODE:
+                if hasattr(self, '_template_debug_counter') and self._template_debug_counter % 50 == 0:
+                    print(f"[🔬 TemplateMatch] No strict candidates, checking flexible: {len(extra_idx)} candidates")
+                    print(f"[🔬 TemplateMatch] Flexible bounds range: [{flexible_low.min():.3f}, {flexible_high.max():.3f}]")
             
             #~ candidates_idx =possible_idx
             #~ pass
@@ -352,9 +357,10 @@ class PeelerEngineGeometrical(PeelerEngineGeneric):
             #~ t2 = time.perf_counter()
             #~ print('numba_explore_best_shift', (t2-t1)*1000)
 
-            # DEBUG: Log successful template match (before jitter check)
-            if self._template_debug_counter % 50 == 0:  # Log every 50 attempts
-                print(f"[🔬 TemplateMatch] 🎯 CANDIDATE FOUND: cluster={cluster_idx}, shift={shift}, scalar={final_scalar_product:.3f}")
+            # DEBUG: Log successful template match (optimizado con DEBUG_MODE)
+            if DEBUG_MODE:
+                if hasattr(self, '_template_debug_counter') and self._template_debug_counter % 50 == 0:
+                    print(f"[🔬 TemplateMatch] 🎯 CANDIDATE FOUND: cluster={cluster_idx}, shift={shift}, scalar={final_scalar_product:.3f}")
 
             
             
@@ -367,9 +373,10 @@ class PeelerEngineGeometrical(PeelerEngineGeneric):
                 cluster_idx = None
                 shift = None
                 final_scalar_product = None
-                # DEBUG: Log rejection due to excessive jitter
-                if self._template_debug_counter % 50 == 0:  # Log every 50 attempts
-                    print(f"[🔬 TemplateMatch] ❌ REJECTED: Excessive jitter (shift={shift})")
+                # DEBUG: Log rejection due to excessive jitter (optimizado)
+                if DEBUG_MODE:
+                    if hasattr(self, '_template_debug_counter') and self._template_debug_counter % 50 == 0:
+                        print(f"[🔬 TemplateMatch] ❌ REJECTED: Excessive jitter (shift={shift})")
                 #~ print('maximum_jitter_shift >> cluster_idx = None ')
                 #~ do_plot = True
             #~ i0_bis, i1_bis = np.unravel_index(np.argmin(np.abs(shift_scalar_product), axis=None), shift_scalar_product.shape)
@@ -395,9 +402,10 @@ class PeelerEngineGeometrical(PeelerEngineGeneric):
             shift = None
             final_scalar_product = None
             
-            # DEBUG: Log failed template match
-            if self._template_debug_counter % 50 == 0:  # Log every 50 attempts
-                print(f"[🔬 TemplateMatch] ❌ NO CANDIDATES FOUND - Template matching failed")
+            # DEBUG: Log failed template match (optimizado con DEBUG_MODE)
+            if DEBUG_MODE:
+                if hasattr(self, '_template_debug_counter') and self._template_debug_counter % 50 == 0:
+                    print(f"[🔬 TemplateMatch] ❌ NO CANDIDATES FOUND - Template matching failed")
             
             #~ import matplotlib.pyplot as plt
             #~ fig, ax = plt.subplots()
