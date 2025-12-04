@@ -8,6 +8,9 @@ from pyacq import Node, register_node_type, ThreadPollInput
 
 from ..peeler import _dtype_spike
 
+# Optimización: Control de logging para reducir overhead en hot-paths
+DEBUG_MODE = False  # Cambiar a True para debugging detallado
+
 
 
 
@@ -22,11 +25,12 @@ class PeelerThread(ThreadPollInput):
         self.total_channel = total_channel
         self.mutex = Mutex()
     def process_data(self, pos, sigs_chunk):
-        # LOGGING AGREGADO PARA DEBUG
+        # LOGGING AGREGADO PARA DEBUG (optimizado con DEBUG_MODE)
         if not hasattr(self, '_debug_counter'):
             self._debug_counter = 0
             self._spike_total = 0
-            print(f"[🔍 PeelerThread] Iniciando logging de datos...")
+            if DEBUG_MODE:
+                print(f"[🔍 PeelerThread] Iniciando logging de datos...")
         
         self._debug_counter += 1
         
@@ -38,38 +42,45 @@ class PeelerThread(ThreadPollInput):
             sigs_chunk = sigs_chunk[:, self.in_group_channels]
             sig_index, preprocessed_chunk, total_spike, spikes  = self.peeler.process_one_chunk(pos, sigs_chunk)
             
-            # LOG CADA 100 CHUNKS
-            if self._debug_counter % 100 == 0:
+            # LOG CADA 100 CHUNKS (solo si DEBUG_MODE=True)
+            if DEBUG_MODE and self._debug_counter % 100 == 0:
                 print(f"[🔍 PeelerThread] Chunk #{self._debug_counter}: shape={sigs_chunk.shape}, spikes={len(spikes)}, amp_range=[{sigs_chunk.min():.2f}, {sigs_chunk.max():.2f}]")
             
             if spikes.size > 0:
                 self._spike_total += len(spikes)
-                print(f"[🎯 PeelerThread] 🎉 ¡SPIKES DETECTADOS! Count: {len(spikes)}, Total: {self._spike_total}")
+                if DEBUG_MODE:
+                    print(f"[🎯 PeelerThread] 🎉 ¡SPIKES DETECTADOS! Count: {len(spikes)}, Total: {self._spike_total}")
                 pass
             else:
                 pass
             
             # Call callbacks if they exist (for wrapper nodes)
             if hasattr(self, '_signal_callback') and callable(self._signal_callback):
-                print(f"[🔍 PeelerThread] Calling _signal_callback with chunk shape={preprocessed_chunk.shape}")
+                if DEBUG_MODE:
+                    print(f"[🔍 PeelerThread] Calling _signal_callback with chunk shape={preprocessed_chunk.shape}")
                 self._signal_callback(preprocessed_chunk, sig_index)
             else:
-                print(f"[❌ PeelerThread] No _signal_callback available")
+                if DEBUG_MODE:
+                    print(f"[❌ PeelerThread] No _signal_callback available")
                 
             if spikes.size > 0:
                 if hasattr(self, '_spike_callback') and callable(self._spike_callback):
-                    print(f"[🎯 PeelerThread] Calling _spike_callback with {len(spikes)} spikes, total_spike={total_spike}")
+                    if DEBUG_MODE:
+                        print(f"[🎯 PeelerThread] Calling _spike_callback with {len(spikes)} spikes, total_spike={total_spike}")
                     self._spike_callback(spikes, total_spike)
-                    print(f"[✅ PeelerThread] _spike_callback completed successfully")
+                    if DEBUG_MODE:
+                        print(f"[✅ PeelerThread] _spike_callback completed successfully")
                 else:
+                    # MANTENER: Este es un error crítico, siempre debe mostrarse
                     print(f"[❌ PeelerThread] CRITICAL: {len(spikes)} spikes detected but NO _spike_callback available!")
                     print(f"    - hasattr _spike_callback: {hasattr(self, '_spike_callback')}")
                     print(f"    - callable _spike_callback: {callable(getattr(self, '_spike_callback', None))}")
             else:
-                if hasattr(self, '_spike_callback'):
-                    print(f"[🔍 PeelerThread] No spikes in chunk (callback available)")
-                else:
-                    print(f"[🔍 PeelerThread] No spikes in chunk (no callback configured)")
+                if DEBUG_MODE:
+                    if hasattr(self, '_spike_callback'):
+                        print(f"[🔍 PeelerThread] No spikes in chunk (callback available)")
+                    else:
+                        print(f"[🔍 PeelerThread] No spikes in chunk (no callback configured)")
         
     
     def change_params(self, **peeler_params):
