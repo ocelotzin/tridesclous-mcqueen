@@ -22,6 +22,10 @@ from tqdm import tqdm
 #~ from .peeler_engine_testing import PeelerEngineTesting
 from .peeler_engine_geometry import PeelerEngineGeometrical
 from .peeler_engine_geometry_cl import PeelerEngineGeometricalCl
+# Clasificación sin plantillas con umap-mcqueen. El módulo de Rust (`tdc_umap`)
+# se importa al inicializar el motor, no aquí: tridesclous sigue funcionando
+# igual aunque no esté compilado.
+from .peeler_engine_umap import PeelerEngineUmap
 
 
 
@@ -30,6 +34,7 @@ peeler_engines = {
     #~ 'testing' : PeelerEngineTesting,
     'geometrical' : PeelerEngineGeometrical,
     'geometrical_opencl' : PeelerEngineGeometricalCl,
+    'umap' : PeelerEngineUmap,
 }
 
 

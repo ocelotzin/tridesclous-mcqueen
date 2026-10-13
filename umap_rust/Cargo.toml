@@ -1,0 +1,33 @@
+# Puente entre tridesclous y umap-mcqueen.
+#
+# NO es una copia de umap-mcqueen ni lo modifica: compila sus `modelo.rs` y
+# `normaliza.rs` tal cual, desde el submódulo `umap-mcqueen/`, con `#[path]`
+# (ver src/lib.rs). Actualizar umap-mcqueen es mover el submódulo.
+#
+# Las versiones de fast-umap, burn, cubecl y clump tienen que ser las MISMAS que
+# en umap-mcqueen/Cargo.toml: los pesos se guardan con el formato de burn de esa
+# versión. `build.rs` lo comprueba.
+
+[package]
+name    = "tdc-umap"
+version = "0.1.0"
+# 2021 y no 2024 como umap-mcqueen: el código que generan las macros de PyO3
+# 0.23 no está adaptado a 2024. modelo.rs y normaliza.rs no usan nada propio de
+# 2024 (sin let-chains ni `unsafe extern`), así que compilan igual en 2021.
+edition = "2021"
+publish = false
+
+[lib]
+name       = "tdc_umap"
+crate-type = ["cdylib"]
+
+[dependencies]
+fast-umap  = "1.6.0"
+burn       = { version = "0.20.1", features = ["wgpu", "autodiff", "autotune"] }
+cubecl     = { version = "0.9.0",  features = ["wgpu"] }
+clump      = "0.5.8"
+serde      = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2       = "0.10"
+pyo3       = { version = "0.23", features = ["extension-module"] }
+numpy      = "0.23"

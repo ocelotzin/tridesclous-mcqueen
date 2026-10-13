@@ -1,0 +1,18 @@
+# Compila e instala el módulo `tdc_umap` en el entorno de Python activo:
+#
+#     git submodule update --init umap_rust/umap-mcqueen
+#     cd umap_rust
+#     pip install maturin
+#     maturin develop --release
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "tdc-umap"
+version = "0.1.0"
+requires-python = ">=3.8"
+dependencies = ["numpy"]
+
+[tool.maturin]
+module-name = "tdc_umap"
